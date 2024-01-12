@@ -2,28 +2,47 @@ from PIL import Image
 import random
 import numpy as np
 
-def _makeGrayNoise(width, height, power):
-    buffer = np.zeros([height, width], dtype=int)
+#def _makeGrayNoise(width, height, power):
+#    buffer = np.zeros([height, width], dtype=int)
+#
+#    for y in range(0, height):
+#        for x in range(0, width):
+#            buffer[y, x] = random.gauss(128, power)
+#    buffer = buffer.clip(0, 255)
+#    return Image.fromarray(buffer.astype(dtype=np.uint8))
 
-    for y in range(0, height):
-        for x in range(0, width):
-            buffer[y, x] = random.gauss(128, power)
-    buffer = buffer.clip(0, 255)
-    return Image.fromarray(buffer.astype(dtype=np.uint8))
+#def _makeRgbNoise(width, height, power, saturation):
+#    buffer = np.zeros([height, width, 3], dtype=int)
+#    intens_power = power * (1.0 - saturation)
+#    for y in range(0, height):
+#        for x in range(0, width):
+#            intens = random.gauss(128, intens_power)
+#            buffer[y, x, 0] = random.gauss(0, power) * saturation + intens
+#            buffer[y, x, 1] = random.gauss(0, power) * saturation + intens
+#            buffer[y, x, 2] = random.gauss(0, power) * saturation + intens
+
+#    buffer = buffer.clip(0, 255)
+#    return Image.fromarray(buffer.astype(dtype=np.uint8))
+
+def _makeGrayNoise(width, height, power):
+    # Generate a whole array of Gaussian noise at once
+    buffer = np.random.normal(128, power, (height, width))
+    # Clip the values to be between 0 and 255
+    buffer = np.clip(buffer, 0, 255)
+    return Image.fromarray(buffer.astype(np.uint8))
 
 def _makeRgbNoise(width, height, power, saturation):
-    buffer = np.zeros([height, width, 3], dtype=int)
+    # Generate intensity and color noise arrays
     intens_power = power * (1.0 - saturation)
-    for y in range(0, height):
-        for x in range(0, width):
-            intens = random.gauss(128, intens_power)
-            buffer[y, x, 0] = random.gauss(0, power) * saturation + intens
-            buffer[y, x, 1] = random.gauss(0, power) * saturation + intens
-            buffer[y, x, 2] = random.gauss(0, power) * saturation + intens
+    intens_noise = np.random.normal(128, intens_power, (height, width))
+    color_noise = np.random.normal(0, power, (height, width, 3))
 
-    buffer = buffer.clip(0, 255)
-    return Image.fromarray(buffer.astype(dtype=np.uint8))
+    # Combine intensity and color noise
+    buffer = color_noise * saturation + intens_noise[:, :, None]
 
+    # Clip the values to be between 0 and 255
+    buffer = np.clip(buffer, 0, 255)
+    return Image.fromarray(buffer.astype(np.uint8))
 
 def grainGen(width, height, grain_size, power, saturation, seed = 1):
     # A grain_size of 1 means the noise buffer will be made 1:1
