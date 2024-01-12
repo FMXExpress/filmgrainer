@@ -1,4 +1,5 @@
 # Filmgrainer - by Lars Ole Pontoppidan - MIT License
+import numpy as np
 
 from PIL import Image, ImageFilter
 import os 
