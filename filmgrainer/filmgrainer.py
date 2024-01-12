@@ -73,33 +73,54 @@ def process(file_in:str, scale:float, src_gamma:float, grain_power:float, shadow
     (grain_size, grain_gauss) = _grainTypes(grain_type)
     mask = _getGrainMask(img_width, img_height, grain_sat, gray_scale, grain_size, grain_gauss, seed)
 
-    mask_pixels = mask.load()
-    img_pixels = img.load()
+    #mask_pixels = mask.load()
+    #img_pixels = img.load()
 
+    np_img = np.array(img)
+    np_mask = np.array(mask)
+           
     # Instead of calling map.lookup(a, b) for each pixel, use the map directly:
     lookup = map.map
 
+    #if gray_scale:
+    #    print("Film graining image ... (grayscale)")
+    #    for y in range(0, img_height):
+    #        for x in range(0, img_width):
+    #            m = mask_pixels[x, y]
+    #            (r, g, b) = img_pixels[x, y]
+    #            gray = int(0.21*r + 0.72*g + 0.07*b)
+    #            #gray_lookup = map.lookup(gray, m)
+    #            gray_lookup = lookup[gray, m]
+    #            img_pixels[x, y] = (gray_lookup, gray_lookup, gray_lookup)
+    #else:
+    #    print("Film graining image ...")
+    #    for y in range(0, img_height):
+    #        for x in range(0, img_width):
+    #            (mr, mg, mb) = mask_pixels[x, y]
+    #            (r, g, b) = img_pixels[x, y]
+    #            r = lookup[r, mr]
+    #            g = lookup[g, mg]
+    #            b = lookup[b, mb]
+    #            img_pixels[x, y] = (r, g, b)
+
+    img_height, img_width = np_img.shape[:2]
+
+    print("Film graining image ...")
     if gray_scale:
-        print("Film graining image ... (grayscale)")
-        for y in range(0, img_height):
-            for x in range(0, img_width):
-                m = mask_pixels[x, y]
-                (r, g, b) = img_pixels[x, y]
-                gray = int(0.21*r + 0.72*g + 0.07*b)
-                #gray_lookup = map.lookup(gray, m)
-                gray_lookup = lookup[gray, m]
-                img_pixels[x, y] = (gray_lookup, gray_lookup, gray_lookup)
+        # Convert to grayscale using vectorized operation
+        gray_img = np.dot(np_img[...,:3], [0.21, 0.72, 0.07]).astype(int)
+        # Apply lookup table using advanced indexing
+        gray_lookup = lookup[gray_img, np_mask]
+        np_img = np.stack([gray_lookup] * 3, axis=-1)
     else:
-        print("Film graining image ...")
-        for y in range(0, img_height):
-            for x in range(0, img_width):
-                (mr, mg, mb) = mask_pixels[x, y]
-                (r, g, b) = img_pixels[x, y]
-                r = lookup[r, mr]
-                g = lookup[g, mg]
-                b = lookup[b, mb]
-                img_pixels[x, y] = (r, g, b)
-    
+        # Apply lookup table using advanced indexing for each channel
+        r_lookup = lookup[np_img[:,:,0], np_mask[:,:,0]]
+        g_lookup = lookup[np_img[:,:,1], np_mask[:,:,1]]
+        b_lookup = lookup[np_img[:,:,2], np_mask[:,:,2]]
+        np_img = np.stack([r_lookup, g_lookup, b_lookup], axis=-1)
+
+    img = Image.fromarray(np_img.astype('uint8'))
+                
     if scale != 1.0:
         print("Scaling image back to original size ...")
         img = img.resize((org_width, org_height), resample = Image.LANCZOS)
